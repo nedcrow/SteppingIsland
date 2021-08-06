@@ -34,10 +34,12 @@ protected:
 #if WITH_EDITOR
 	virtual void PostRegisterAllComponents() override;
 #endif
-	virtual void BeginPlay() override;
+
+#pragma region TileMap
+private:
+	int DefaultTileUnit = 100;
 
 public:	
-#pragma region TileMap
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Locations")
 		TArray<FVector> TileLocations;
 
@@ -57,14 +59,13 @@ public:
 		int SizeY = 3;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
-		float TileScale = 1.f;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
 		bool bActiveGrid = false;
 
+	/* 충돌체와 Mesh 크기를 맵의 타일 갯수에 맞춤 */
 	void SetTiles();
 #pragma endregion
 
+public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Grid")
 		UMaterialInterface* BaseMaterial;
 
@@ -83,8 +84,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
 		UMaterialInterface* EffectAreaDecalMI;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
 	class UDecalComponent* CursorTileDecal;
 
+	/* bActiveGrid 확인 후 타당한 메터리얼로 교체 */
 	void OnGrid();
 	void SpawnHoveredDecal(FVector Location, EDecalType DecalType = EDecalType::Normal);	
 };

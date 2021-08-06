@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "TileMap.h"
@@ -28,19 +28,13 @@ void ATileMap::PostRegisterAllComponents()
 }
 #endif
 
-// Called when the game starts or when spawned
-void ATileMap::BeginPlay()
-{
-	/*Super::BeginPlay();
-	SetTiles();
-	OnGrid();*/
-}
-
 void ATileMap::SetTiles()
 {
 	float halfExtent = TileUnit * 0.5f;
+	float tileScale = FMath::RoundToFloat((TileUnit / DefaultTileUnit) * 100.f) / 100.f;
+	UE_LOG(LogTemp,Warning,TEXT("tileScale: %f"), tileScale);
 	Box->SetBoxExtent(FVector(SizeX * halfExtent, SizeY * halfExtent, 0.1f));
-	SM->SetRelativeScale3D(FVector(SizeX * TileScale, SizeY * TileScale, 0.1f));
+	SM->SetRelativeScale3D(FVector(SizeX * tileScale, SizeY * tileScale, 0.1f));
 }
 
 void ATileMap::OnGrid()
@@ -123,18 +117,17 @@ void ATileMap::SpawnHoveredDecal(FVector Location, EDecalType DecalType)
 		break;
 	}
 
-	// Ä¿¼­ À§Ä¡ È®ÀÎ ¿ë Decal ¾øÀ¸¸é »ý¼º
+	// ì»¤ì„œ ìœ„ì¹˜ í™•ì¸ ìš© Decal ì—†ìœ¼ë©´ ìƒì„±
 	if (CursorTileDecal == nullptr) {
-		CursorTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, FVector(50.f, 50.f, TileUnit), SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
+		CursorTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, FVector(TileUnit*0.5f, TileUnit*0.5f, TileUnit), SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
 	}
 
-	// Decal ¹èÄ¡
+	// Decal ë°°ì¹˜
 	bool canSpawnDecal = decalMI != nullptr && 
 		(CursorTileDecal->GetRelativeLocation().X != decalLocationX || CursorTileDecal->GetRelativeLocation().Y != decalLocationY);
 	if (canSpawnDecal) {
 		CursorTileDecal->Activate(true);
-		//UE_LOG(LogTemp,Warning,TEXT("X:%f, Y:%f, Z:%f"), decalLocationX, decalLocationY, SM->GetRelativeLocation().Z);
-		CursorTileDecal->SetRelativeLocation(FVector(decalLocationX, decalLocationY, SM->GetRelativeLocation().Z));
+		CursorTileDecal->SetRelativeLocation(FVector(decalLocationX, decalLocationY, SM->GetRelativeLocation().Z+1.f));
 	}
 }
 
