@@ -30,11 +30,26 @@ void ATileMap::PostRegisterAllComponents()
 
 void ATileMap::SetTiles()
 {
+	// Tilemap Mesh
 	float halfExtent = TileUnit * 0.5f;
-	float tileScale = FMath::RoundToFloat((TileUnit / DefaultTileUnit) * 100.f) / 100.f;
-	UE_LOG(LogTemp,Warning,TEXT("tileScale: %f"), tileScale);
+	float tileScale = FMath::Floor(((float)TileUnit / DefaultTileUnit) * 100.f) / 100.f;
 	Box->SetBoxExtent(FVector(SizeX * halfExtent, SizeY * halfExtent, 0.1f));
 	SM->SetRelativeScale3D(FVector(SizeX * tileScale, SizeY * tileScale, 0.1f));
+
+	// Tile locations
+	float halfTileMapSizeX = SizeX * TileUnit * 0.5f;
+	float halfTileMapSizeY = SizeY * TileUnit * 0.5f;
+	float halfTileUnit = TileUnit * 0.5f;
+	TArray<float> TileLocationArrX;
+	TArray<float> TileLocationArrY;
+	for (int i = 0; i < halfTileMapSizeX; i++) { TileLocationArrX.Add(-halfTileMapSizeX + halfTileUnit + (TileUnit * i)); }
+	for (int i = 0; i < halfTileMapSizeY; i++) { TileLocationArrY.Add(-halfTileMapSizeY + halfTileUnit + (TileUnit * i)); }
+	for (int i = 0; i < SizeX; i++) {
+		for (int j = 0; j < SizeY; j++) {			
+			TileActiveArr.Push(1);
+			TileLocations.Push(FVector(TileLocationArrX[i], TileLocationArrY[j], SM->GetRelativeLocation().Z));
+		}
+	}
 }
 
 void ATileMap::OnGrid()
@@ -49,31 +64,19 @@ void ATileMap::OnGrid()
 
 void ATileMap::SpawnHoveredDecal(FVector Location, EDecalType DecalType)
 {
-	float decalLocationX = 0.f;
-	float decalLocationY = 0.f;
+	FVector decalLocation = FVector::ZeroVector;
 	float halfTileMapSizeX = SizeX * TileUnit * 0.5f;
 	float halfTileMapSizeY = SizeY * TileUnit * 0.5f;
-	float halfTileUnit = TileUnit * 0.5f;
-	TArray<float> TileLocationArrX;
-	TArray<float> TileLocationArrY;
-	for (int i = 0; i < halfTileMapSizeX; i++) { TileLocationArrX.Add(-halfTileMapSizeX + halfTileUnit + (TileUnit * i)); }
-	for (int i = 0; i < halfTileMapSizeY; i++) { TileLocationArrY.Add(-halfTileMapSizeY + halfTileUnit + (TileUnit * i)); }
 
 	bool isInTileMap = Location.X < halfTileMapSizeX&& Location.X > -halfTileMapSizeX &&
 		Location.Y < halfTileMapSizeY&& Location.Y > -halfTileMapSizeY;
 	if (isInTileMap) {
-		float lastDistX = halfTileMapSizeX * 2;
-		for (float locationX : TileLocationArrX) {
-			if (lastDistX > FMath::Abs(locationX - Location.X)) {
-				lastDistX = FMath::Abs(locationX - Location.X);
-				decalLocationX = locationX;
-			}
-		}
-		float lastDistY = halfTileMapSizeX * 2;
-		for (float locationY : TileLocationArrY) {
-			if (lastDistY > FMath::Abs(locationY - Location.Y)) {
-				lastDistY = FMath::Abs(locationY - Location.Y);
-				decalLocationY = locationY;
+		float lastDist = SizeX * SizeY * TileUnit;
+		for (FVector tileLocation : TileLocations) {
+			float currentDist = FVector::Dist(tileLocation, Location);
+			if(currentDist < lastDist) {
+				lastDist = currentDist;	
+				decalLocation = tileLocation;
 			}
 		}
 	}
@@ -124,10 +127,10 @@ void ATileMap::SpawnHoveredDecal(FVector Location, EDecalType DecalType)
 
 	// Decal 배치
 	bool canSpawnDecal = decalMI != nullptr && 
-		(CursorTileDecal->GetRelativeLocation().X != decalLocationX || CursorTileDecal->GetRelativeLocation().Y != decalLocationY);
+		(CursorTileDecal->GetRelativeLocation().X != decalLocation.X || CursorTileDecal->GetRelativeLocation().Y != decalLocation.Y);
 	if (canSpawnDecal) {
 		CursorTileDecal->Activate(true);
-		CursorTileDecal->SetRelativeLocation(FVector(decalLocationX, decalLocationY, SM->GetRelativeLocation().Z+1.f));
+		CursorTileDecal->SetRelativeLocation(decalLocation);
 	}
 }
 

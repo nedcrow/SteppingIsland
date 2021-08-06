@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+Ôªø// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -7,7 +7,7 @@
 #include "PlayerCameraPawn.generated.h"
 
 /*
-*  ¿Ø¿˙ ƒ´∏ﬁ∂Û π◊ ƒøº≠ ¿Œ≈Õ∑∫º« ¥„¥Á.
+*  Ïú†Ï†Ä Ïπ¥Î©îÎùº Î∞è Ïª§ÏÑú Ïù∏ÌÑ∞Î†âÏÖò Îã¥Îãπ.
 */
 UCLASS()
 class STEPPINGISLAND_API APlayerCameraPawn : public APawn
@@ -46,24 +46,50 @@ public:
 
 	void TransportToStartPoint();
 
+/* Common Cursor Event */
+public:
+	void LeftClick_Pressed();
+	void LeftClick_Released();
 
-	// Translate
+/* Basic Translation */
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn")
-	float TurnSpeed = 0.1f;
+		float MoveSpeed = 1000.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn")
+		float TurnSpeed = 0.5f;
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void TurnRight(float Value);
 
+/* RotateAround */
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn")
+		float MaxRotation = 180.0f;
+	bool bCanRotateAround = false;
+	FVector2D StartMousePosition;
+	FRotator StartRootRotator;
+	void SetStartCursorTransform();
+	void CameraRotateAround();
+	void EndCameraRotating();
 
-	// CurrentTile checking
-	/* ∏≈ tick ∏∂¥Ÿ »Æ¿Œ«œ∏Á, GameState «¡∑Œ∆€∆º ∞ªΩ≈ */
+/* ZoomIn Out */
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn")
+		float WheelSpeed = 10.0f;
+
+/* CurrentTile checking */
+public:
+	/* Îß§ tick ÎßàÎã§ ÌôïÏù∏ÌïòÎ©∞, GameState ÌîÑÎ°úÌçºÌã∞ Í∞±Ïã† */
 	void CheckCurrentTile();
 
-	// Touch interaction
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
-		bool bCanSelectTile = true;
+/* Drag Select */
+public:
+	bool bCanDragSelect = false;
+	void StartDrag();
+	void EndDrag();
 
 private:
+	bool bCanTraceTile = true;
 	AController* HitController;
 	TArray<FHitResult> TraceCursor();
 };

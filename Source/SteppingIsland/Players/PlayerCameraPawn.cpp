@@ -3,6 +3,7 @@
 
 #include "PlayerCameraPawn.h"
 #include "../TileSystem/TileMap.h"
+#include "../MainPC.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/SphereComponent.h"
@@ -44,6 +45,7 @@ void APlayerCameraPawn::BeginPlay()
 void APlayerCameraPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if(bCanRotateAround) CameraRotateAround();
 	CheckCurrentTile();
 }
 
@@ -55,6 +57,9 @@ void APlayerCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &APlayerCameraPawn::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &APlayerCameraPawn::MoveRight);
 	PlayerInputComponent->BindAxis(TEXT("TurnRight"), this, &APlayerCameraPawn::TurnRight);
+	PlayerInputComponent->BindAction(TEXT("RotateAround"), IE_Pressed, this, &APlayerCameraPawn::SetStartCursorTransform);
+	PlayerInputComponent->BindAction(TEXT("LeftClick"), IE_Pressed, this, &APlayerCameraPawn::SetStartCursorTransform);
+	PlayerInputComponent->BindAction(TEXT("LeftClick"), IE_Released, this, &APlayerCameraPawn::LeftClick_Released);
 }
 
 void APlayerCameraPawn::TransportToStartPoint()
@@ -77,6 +82,16 @@ void APlayerCameraPawn::TransportToStartPoint()
 	if (RootComponent->GetRelativeRotation().Yaw != 0) {
 		AddControllerYawInput((GetControlRotation().Yaw < 0 ? GetControlRotation().Yaw : -GetControlRotation().Yaw) * 2);
 	}
+}
+
+void APlayerCameraPawn::LeftClick_Pressed()
+{
+}
+
+void APlayerCameraPawn::LeftClick_Released()
+{
+	EndCameraRotating();
+	EndDrag();
 }
 
 void APlayerCameraPawn::MoveForward(float Value)
@@ -107,8 +122,47 @@ void APlayerCameraPawn::TurnRight(float Value)
 	{
 		return;
 	}
+	FRotator currentRot = RootComponent->GetRelativeRotation();
+	RootComponent->SetRelativeRotation(FRotator(currentRot.Pitch, currentRot.Yaw - Value * TurnSpeed, currentRot.Roll));
+}
 
-	AddControllerYawInput(Value * TurnSpeed);
+void APlayerCameraPawn::SetStartCursorTransform()
+{
+	AMainPC* PC = Cast<AMainPC>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	if (PC) {
+		PC->GetLocalPlayer()->ViewportClient->GetMousePosition(StartMousePosition);
+		StartRootRotator = RootComponent->GetRelativeTransform().Rotator();
+		bCanRotateAround = true;
+	}
+}
+
+void APlayerCameraPawn::CameraRotateAround()
+{
+	AMainPC* PC = Cast<AMainPC>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	if (PC) {
+		int32 scrX;
+		int32 scrY;
+		FVector2D tempMousePosition;
+
+		PC->GetViewportSize(scrX, scrY);
+		PC->GetLocalPlayer()->ViewportClient->GetMousePosition(tempMousePosition);
+
+		float addRotationPitch = ((tempMousePosition.Y - StartMousePosition.Y) / scrY * MaxRotation);
+		float addRotationYaw = ((tempMousePosition.X - StartMousePosition.X) / scrX * MaxRotation);
+
+		if (addRotationPitch != 0 && addRotationYaw != 0) {
+			RootComponent->SetRelativeRotation(FRotator(
+				StartRootRotator.Pitch - addRotationPitch,
+				StartRootRotator.Yaw + addRotationYaw,
+				0.0f
+			));
+		}
+	}
+}
+
+void APlayerCameraPawn::EndCameraRotating()
+{
+	if(bCanRotateAround) bCanRotateAround = false;
 }
 
 void APlayerCameraPawn::CheckCurrentTile() {
@@ -121,11 +175,21 @@ void APlayerCameraPawn::CheckCurrentTile() {
 	}	
 }
 
+void APlayerCameraPawn::StartDrag()
+{
+	bCanDragSelect = true;
+}
+
+void APlayerCameraPawn::EndDrag()
+{
+	if(bCanDragSelect) bCanDragSelect = false;
+}
+
 TArray<FHitResult> APlayerCameraPawn::TraceCursor()
 {
 	TArray<FHitResult> OutHits;
 
-	if (!bCanSelectTile) {
+	if (!bCanTraceTile) {
 		return OutHits;
 	}
 

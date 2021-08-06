@@ -38,13 +38,17 @@ protected:
 #pragma region TileMap
 private:
 	int DefaultTileUnit = 100;
-
+	
 public:	
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Locations")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
+		TArray<uint8> TileActiveArr;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
 		TArray<FVector> TileLocations;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Locations")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
 		TArray<FVector> BuildableLocations;
+
 
 	/* Centimeter */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
