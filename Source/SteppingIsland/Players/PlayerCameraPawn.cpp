@@ -196,6 +196,8 @@ void APlayerCameraPawn::DragTiles()
 void APlayerCameraPawn::EndDragTiles()
 {
 	if(bCanDragTiles) bCanDragTiles = false;
+	ATileMap* TileMap = Cast<ATileMap>(UGameplayStatics::GetActorOfClass(GetWorld(), ATileMap::StaticClass()));
+	if (TileMap) TileMap->HideDecal(EDecalType::Drag);
 }
 
 FHitResult APlayerCameraPawn::GetTilemapHitResult()

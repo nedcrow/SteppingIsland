@@ -39,6 +39,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		class UStaticMeshComponent* SM;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		class USceneComponent* HUDComp;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		class UWidgetComponent* DragWidget;
+
 protected:
 #if WITH_EDITOR
 	virtual void PostRegisterAllComponents() override;
@@ -68,20 +74,27 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
 		int SizeY = 3;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
-		bool bActiveGrid = false;
-
 	/* 충돌체와 Mesh 크기를 맵의 타일 갯수에 맞춤 */
 	void SetTiles();
 #pragma endregion
 
+#pragma region Grid Option
 public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
+		bool bActiveGrid = false;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Grid")
 		UMaterialInterface* BaseMaterial;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Grid")
 		UMaterialInterface* GridMaterial;
 
+	/* bActiveGrid 확인 후 타당한 메터리얼로 교체 */
+	void OnGrid();
+#pragma endregion
+
+#pragma region HoveredDecal
+public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
 		UMaterialInterface* NormalDecalMI;
 
@@ -95,12 +108,18 @@ public:
 		UMaterialInterface* EffectAreaDecalMI;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
-	class UDecalComponent* CursorTileDecal;
+		class UDecalComponent* CursorTileDecal;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
-	class UDecalComponent* DragTileDecal;
+		class UDecalComponent* DragTileDecal;
 
-	/* bActiveGrid 확인 후 타당한 메터리얼로 교체 */
-	void OnGrid();
 	void SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation, EDecalType DecalType = EDecalType::Normal);
+	void HideDecal(EDecalType DecalType = EDecalType::Normal);
+
+private:
+	UMaterialInterface* GetTargetDecalMI(UMaterialInterface* MI);
+	UDecalComponent* GetTargetDecalComponent(UDecalComponent* DecalComp, UMaterialInterface* MI, FVector Size);
+#pragma endregion
+
+	
 };

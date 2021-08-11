@@ -5,6 +5,8 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/DecalComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 // Sets default values
@@ -18,6 +20,14 @@ ATileMap::ATileMap()
 	SM->SetupAttachment(Box);
 	SM->ComponentTags.Add("Tile");
 	Tags.Add("TileMap");
+
+	HUDComp = CreateDefaultSubobject<USceneComponent>(TEXT("HUDComp"));
+	HUDComp->SetupAttachment(Box);
+	HUDComp->SetRelativeRotation(FRotator(90.f, 0.f, 0.f));
+
+	DragWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("DragWidget"));
+	DragWidget->SetupAttachment(HUDComp);	
+	DragWidget->SetVisibility(false);
 }
 
 #if WITH_EDITOR
@@ -68,54 +78,6 @@ void ATileMap::OnGrid()
 
 void ATileMap::SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation, EDecalType DecalType)
 {
-	// Material
-	UMaterialInterface* decalMI = nullptr;
-	switch (DecalType)
-	{
-	case EDecalType::Normal:
-		if (NormalDecalMI == nullptr) {
-			UE_LOG(LogTemp, Warning, TEXT("!!!- Null : NormalDecalMI -!!!"));
-		}
-		else {
-			decalMI = NormalDecalMI;
-		}
-		break;
-	case EDecalType::Build:
-		if (NormalDecalMI == nullptr) {
-			UE_LOG(LogTemp, Warning, TEXT("!!!- Null : NormalDecalMI -!!!"));
-		}
-		else {
-			decalMI = NormalDecalMI;
-		}
-		break;
-	case EDecalType::NotBuild:
-		if (NormalDecalMI == nullptr) {
-			UE_LOG(LogTemp, Warning, TEXT("!!!- Null : NormalDecalMI -!!!"));
-		}
-		else {
-			decalMI = NormalDecalMI;
-		}
-		break;
-	case EDecalType::EffectArea:
-		if (NormalDecalMI == nullptr) {
-			UE_LOG(LogTemp, Warning, TEXT("!!!- Null : NormalDecalMI -!!!"));
-		}
-		else {
-			decalMI = NormalDecalMI;
-		}
-		break;
-	case EDecalType::Drag:
-		if (NormalDecalMI == nullptr) {
-			UE_LOG(LogTemp, Warning, TEXT("!!!- Null : NormalDecalMI -!!!"));
-		}
-		else {
-			decalMI = NormalDecalMI;
-		}
-		break;
-	default:
-		break;
-	}
-
 	// Size & Location
 	FVector decalSize = FVector(TileUnit * 0.5f, TileUnit * 0.5f, TileUnit);
 	FVector decalDragSize = FVector::OneVector;
@@ -169,31 +131,92 @@ void ATileMap::SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation,
 		}
 	}
 
-	// DecalComponent, 없으면 생성
-	UDecalComponent* currentDecalComp;
+	// Material 및 DecalComponent 준비
+	UMaterialInterface* decalMI = nullptr;
+	UDecalComponent* currentDecalComp = nullptr;
+	switch (DecalType)
+	{
+	case EDecalType::Normal:
+		decalMI = GetTargetDecalMI(NormalDecalMI);
+		currentDecalComp = CursorTileDecal = GetTargetDecalComponent(CursorTileDecal, decalMI, decalSize);
+		break;
+	case EDecalType::Build:
+		decalMI = GetTargetDecalMI(NormalDecalMI);
+		break;
+	case EDecalType::NotBuild:
+		decalMI = GetTargetDecalMI(NormalDecalMI);
+		break;
+	case EDecalType::EffectArea:
+		decalMI = GetTargetDecalMI(NormalDecalMI);
+		break;
+	case EDecalType::Drag:
+		decalMI = GetTargetDecalMI(NormalDecalMI);
+		currentDecalComp = DragTileDecal = GetTargetDecalComponent(DragTileDecal, decalMI, decalSize);
+		currentDecalComp->SetRelativeScale3D(decalDragSize);
 
-	if (DecalType == EDecalType::Drag) {
-		if (DragTileDecal == nullptr) {
-			DragTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, decalSize, SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
+		// HUD 배치
+		if (DragWidget && DragWidget != nullptr) {
+			if(!DragWidget->IsVisible())DragWidget->SetVisibility(true);
+			DragWidget->SetDrawSize(FVector2D(decalDragSize.Y * TileUnit, decalDragSize.X * TileUnit));
+			HUDComp->SetRelativeLocation(FVector(decalLocation.X, decalLocation.Y, 1.0f));
 		}
-		currentDecalComp = DragTileDecal;		
-	}
-	else {
-		if (CursorTileDecal == nullptr) {
-			CursorTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, decalSize, SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
-		}
-		currentDecalComp = CursorTileDecal;
+		break;
+	default:
+		break;
 	}
 
-	// Decal 배치
-	bool canDisplayDecal = decalMI != nullptr && 
-		(currentDecalComp != nullptr && currentDecalComp->GetRelativeLocation().X != decalLocation.X || currentDecalComp->GetRelativeLocation().Y != decalLocation.Y);
+	// Decal 배치 (Decal 위치가 타일맵 위에 있는 경우 + ETC 확인)
+	bool canDisplayDecal = 
+		decalMI != nullptr &&
+		currentDecalComp != nullptr &&
+		(currentDecalComp->GetRelativeLocation().X != decalLocation.X || currentDecalComp->GetRelativeLocation().Y != decalLocation.Y);
 	if (canDisplayDecal) {
-		currentDecalComp->Activate(true);
-		if (DecalType == EDecalType::Drag) {
-			currentDecalComp->SetWorldScale3D(decalDragSize);
-		}
 		currentDecalComp->SetRelativeLocation(decalLocation);
 	}
+
+
+}
+
+void ATileMap::HideDecal(EDecalType DecalType)
+{
+	switch (DecalType) {
+	case EDecalType::Normal:
+		if(CursorTileDecal && CursorTileDecal != nullptr) CursorTileDecal->SetVisibility(false);
+		break;
+	case EDecalType::Build:		
+		break;
+	case EDecalType::NotBuild:
+		break;
+	case EDecalType::EffectArea:
+		break;
+	case EDecalType::Drag:
+		if (DragTileDecal && DragTileDecal != nullptr) DragTileDecal->SetVisibility(false); 
+		if(DragWidget && DragWidget != nullptr) DragWidget->SetVisibility(false);
+		break;
+	default:
+		break;
+	}
+}
+
+UMaterialInterface* ATileMap::GetTargetDecalMI(UMaterialInterface* MI)
+{
+	if (MI == nullptr) {
+		UE_LOG(LogTemp, Warning, TEXT("!!!- Null : UMaterialInterface from 'GetDecalMI()' function. -!!!"));
+		return nullptr;
+	}
+	else {
+		return MI;
+	}	
+}
+
+UDecalComponent* ATileMap::GetTargetDecalComponent(UDecalComponent* DecalComp, UMaterialInterface* MI, FVector Size)
+{
+	if (DecalComp == nullptr) {
+		if (MI != nullptr && DecalComp == nullptr) {
+			DecalComp = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), MI, Size, SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
+		}
+	}
+	if(!DecalComp->IsVisible())DecalComp->SetVisibility(true);
+	return DecalComp;	
 }
 
