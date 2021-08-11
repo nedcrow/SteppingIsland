@@ -13,6 +13,15 @@ enum class EDecalType : uint8
 	Build = 1			UMETA(DisplayName = "Build"),
 	NotBuild = 2		UMETA(DisplayName = "NotBuild"),
 	EffectArea = 3		UMETA(DisplayName = "EffectArea"),
+	Drag = 4		UMETA(DisplayName = "Drag"),
+};
+
+USTRUCT(Atomic, BlueprintType)
+struct FTile {
+	GENERATED_BODY();
+public:
+	int8 bIsUsing : 1;
+	FVector Location;
 };
 
 UCLASS()
@@ -41,10 +50,7 @@ private:
 	
 public:	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
-		TArray<uint8> TileActiveArr;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
-		TArray<FVector> TileLocations;
+		TArray<FTile> TileArr;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
 		TArray<FVector> BuildableLocations;
@@ -91,7 +97,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
 	class UDecalComponent* CursorTileDecal;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Decal")
+	class UDecalComponent* DragTileDecal;
+
 	/* bActiveGrid 확인 후 타당한 메터리얼로 교체 */
 	void OnGrid();
-	void SpawnHoveredDecal(FVector Location, EDecalType DecalType = EDecalType::Normal);	
+	void SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation, EDecalType DecalType = EDecalType::Normal);
 };

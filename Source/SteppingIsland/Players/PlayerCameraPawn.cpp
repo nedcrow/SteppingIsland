@@ -45,7 +45,8 @@ void APlayerCameraPawn::BeginPlay()
 void APlayerCameraPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if(bCanRotateAround) CameraRotateAround();
+	if(bCanRotateAround) RotateAroundCamera();
+	if(bCanDragTiles) DragTiles();
 	CheckCurrentTile();
 }
 
@@ -57,8 +58,8 @@ void APlayerCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &APlayerCameraPawn::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &APlayerCameraPawn::MoveRight);
 	PlayerInputComponent->BindAxis(TEXT("TurnRight"), this, &APlayerCameraPawn::TurnRight);
-	PlayerInputComponent->BindAction(TEXT("RotateAround"), IE_Pressed, this, &APlayerCameraPawn::SetStartCursorTransform);
-	PlayerInputComponent->BindAction(TEXT("LeftClick"), IE_Pressed, this, &APlayerCameraPawn::SetStartCursorTransform);
+	PlayerInputComponent->BindAction(TEXT("RotateAround"), IE_Pressed, this, &APlayerCameraPawn::CallRotateAround);
+	PlayerInputComponent->BindAction(TEXT("LeftClick"), IE_Pressed, this, &APlayerCameraPawn::LeftClick_Pressed);
 	PlayerInputComponent->BindAction(TEXT("LeftClick"), IE_Released, this, &APlayerCameraPawn::LeftClick_Released);
 }
 
@@ -86,12 +87,14 @@ void APlayerCameraPawn::TransportToStartPoint()
 
 void APlayerCameraPawn::LeftClick_Pressed()
 {
+	SetStartCursorTransform();
+	StartDragTiles();
 }
 
 void APlayerCameraPawn::LeftClick_Released()
 {
 	EndCameraRotating();
-	EndDrag();
+	EndDragTiles();
 }
 
 void APlayerCameraPawn::MoveForward(float Value)
@@ -126,17 +129,13 @@ void APlayerCameraPawn::TurnRight(float Value)
 	RootComponent->SetRelativeRotation(FRotator(currentRot.Pitch, currentRot.Yaw - Value * TurnSpeed, currentRot.Roll));
 }
 
-void APlayerCameraPawn::SetStartCursorTransform()
+void APlayerCameraPawn::CallRotateAround()
 {
-	AMainPC* PC = Cast<AMainPC>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-	if (PC) {
-		PC->GetLocalPlayer()->ViewportClient->GetMousePosition(StartMousePosition);
-		StartRootRotator = RootComponent->GetRelativeTransform().Rotator();
-		bCanRotateAround = true;
-	}
+	SetStartCursorTransform();
+	bCanRotateAround = true;
 }
 
-void APlayerCameraPawn::CameraRotateAround()
+void APlayerCameraPawn::RotateAroundCamera()
 {
 	AMainPC* PC = Cast<AMainPC>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 	if (PC) {
@@ -165,27 +164,52 @@ void APlayerCameraPawn::EndCameraRotating()
 	if(bCanRotateAround) bCanRotateAround = false;
 }
 
+void APlayerCameraPawn::SetStartCursorTransform()
+{
+	AMainPC* PC = Cast<AMainPC>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	if (PC) {
+		PC->GetLocalPlayer()->ViewportClient->GetMousePosition(StartMousePosition);
+		StartRootRotator = RootComponent->GetRelativeTransform().Rotator();
+	}
+}
+
 void APlayerCameraPawn::CheckCurrentTile() {
-	TArray<FHitResult> outHits = TraceCursor();
+	FHitResult tilemap = GetTilemapHitResult();
+	ATileMap* TileMap = Cast<ATileMap>(UGameplayStatics::GetActorOfClass(GetWorld(), ATileMap::StaticClass()));
+	if (TileMap) TileMap->SpawnHoveredDecal(tilemap.Location, tilemap.Location);
+}
+
+void APlayerCameraPawn::StartDragTiles()
+{
+	FHitResult tilemap = GetTilemapHitResult();
+	StartDragLocation = tilemap.Location;
+	if (!bCanDragTiles) bCanDragTiles = true;
+}
+
+void APlayerCameraPawn::DragTiles()
+{
+	FHitResult tilemap = GetTilemapHitResult();
+	ATileMap* TileMap = Cast<ATileMap>(UGameplayStatics::GetActorOfClass(GetWorld(), ATileMap::StaticClass()));
+	if (TileMap) TileMap->SpawnHoveredDecal(StartDragLocation, tilemap.Location, EDecalType::Drag);
+}
+
+void APlayerCameraPawn::EndDragTiles()
+{
+	if(bCanDragTiles) bCanDragTiles = false;
+}
+
+FHitResult APlayerCameraPawn::GetTilemapHitResult()
+{
+	TArray<FHitResult> outHits = GetResultOfCursorTracing();
 	for (auto hit : outHits) {
 		if (hit.GetActor() && hit.GetActor()->GetComponentsByTag(UStaticMeshComponent::StaticClass(), FName("Tile")).Num() > 0) {
-			ATileMap* TileMap = Cast<ATileMap>(UGameplayStatics::GetActorOfClass(GetWorld(), ATileMap::StaticClass()));
-			if (TileMap) TileMap->SpawnHoveredDecal(hit.Location);
+			return hit;
 		}
-	}	
+	}
+	return FHitResult();
 }
 
-void APlayerCameraPawn::StartDrag()
-{
-	bCanDragSelect = true;
-}
-
-void APlayerCameraPawn::EndDrag()
-{
-	if(bCanDragSelect) bCanDragSelect = false;
-}
-
-TArray<FHitResult> APlayerCameraPawn::TraceCursor()
+TArray<FHitResult> APlayerCameraPawn::GetResultOfCursorTracing()
 {
 	TArray<FHitResult> OutHits;
 

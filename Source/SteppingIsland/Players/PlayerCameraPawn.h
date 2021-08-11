@@ -68,8 +68,8 @@ public:
 	bool bCanRotateAround = false;
 	FVector2D StartMousePosition;
 	FRotator StartRootRotator;
-	void SetStartCursorTransform();
-	void CameraRotateAround();
+	void CallRotateAround();
+	void RotateAroundCamera();
 	void EndCameraRotating();
 
 /* ZoomIn Out */
@@ -84,12 +84,19 @@ public:
 
 /* Drag Select */
 public:
-	bool bCanDragSelect = false;
-	void StartDrag();
-	void EndDrag();
+	FVector StartDragLocation;
+	bool bCanDragTiles = false;
+	void StartDragTiles();
+	void DragTiles();
+	void EndDragTiles();
 
+/* Common */
 private:
+	void SetStartCursorTransform();
+
+	FHitResult GetTilemapHitResult();
+
 	bool bCanTraceTile = true;
 	AController* HitController;
-	TArray<FHitResult> TraceCursor();
+	TArray<FHitResult> GetResultOfCursorTracing();
 };

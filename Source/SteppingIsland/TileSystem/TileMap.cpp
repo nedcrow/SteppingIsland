@@ -36,7 +36,9 @@ void ATileMap::SetTiles()
 	Box->SetBoxExtent(FVector(SizeX * halfExtent, SizeY * halfExtent, 0.1f));
 	SM->SetRelativeScale3D(FVector(SizeX * tileScale, SizeY * tileScale, 0.1f));
 
-	// Tile locations
+	// Tile structs
+	TileArr.Empty();
+
 	float halfTileMapSizeX = SizeX * TileUnit * 0.5f;
 	float halfTileMapSizeY = SizeY * TileUnit * 0.5f;
 	float halfTileUnit = TileUnit * 0.5f;
@@ -45,9 +47,11 @@ void ATileMap::SetTiles()
 	for (int i = 0; i < halfTileMapSizeX; i++) { TileLocationArrX.Add(-halfTileMapSizeX + halfTileUnit + (TileUnit * i)); }
 	for (int i = 0; i < halfTileMapSizeY; i++) { TileLocationArrY.Add(-halfTileMapSizeY + halfTileUnit + (TileUnit * i)); }
 	for (int i = 0; i < SizeX; i++) {
-		for (int j = 0; j < SizeY; j++) {			
-			TileActiveArr.Push(1);
-			TileLocations.Push(FVector(TileLocationArrX[i], TileLocationArrY[j], SM->GetRelativeLocation().Z));
+		for (int j = 0; j < SizeY; j++) {		
+			FTile tile;
+			tile.bIsUsing = 1;
+			tile.Location = FVector(TileLocationArrX[i], TileLocationArrY[j], SM->GetRelativeLocation().Z);
+			TileArr.Add(tile);
 		}
 	}
 }
@@ -62,25 +66,9 @@ void ATileMap::OnGrid()
 	}
 }
 
-void ATileMap::SpawnHoveredDecal(FVector Location, EDecalType DecalType)
+void ATileMap::SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation, EDecalType DecalType)
 {
-	FVector decalLocation = FVector::ZeroVector;
-	float halfTileMapSizeX = SizeX * TileUnit * 0.5f;
-	float halfTileMapSizeY = SizeY * TileUnit * 0.5f;
-
-	bool isInTileMap = Location.X < halfTileMapSizeX&& Location.X > -halfTileMapSizeX &&
-		Location.Y < halfTileMapSizeY&& Location.Y > -halfTileMapSizeY;
-	if (isInTileMap) {
-		float lastDist = SizeX * SizeY * TileUnit;
-		for (FVector tileLocation : TileLocations) {
-			float currentDist = FVector::Dist(tileLocation, Location);
-			if(currentDist < lastDist) {
-				lastDist = currentDist;	
-				decalLocation = tileLocation;
-			}
-		}
-	}
-
+	// Material
 	UMaterialInterface* decalMI = nullptr;
 	switch (DecalType)
 	{
@@ -116,21 +104,96 @@ void ATileMap::SpawnHoveredDecal(FVector Location, EDecalType DecalType)
 			decalMI = NormalDecalMI;
 		}
 		break;
+	case EDecalType::Drag:
+		if (NormalDecalMI == nullptr) {
+			UE_LOG(LogTemp, Warning, TEXT("!!!- Null : NormalDecalMI -!!!"));
+		}
+		else {
+			decalMI = NormalDecalMI;
+		}
+		break;
 	default:
 		break;
 	}
 
-	// 커서 위치 확인 용 Decal 없으면 생성
-	if (CursorTileDecal == nullptr) {
-		CursorTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, FVector(TileUnit*0.5f, TileUnit*0.5f, TileUnit), SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
+	// Size & Location
+	FVector decalSize = FVector(TileUnit * 0.5f, TileUnit * 0.5f, TileUnit);
+	FVector decalDragSize = FVector::OneVector;
+	FVector decalLocation = FVector::ZeroVector;
+	float halfTileMapSizeX = SizeX * TileUnit * 0.5f;
+	float halfTileMapSizeY = SizeY * TileUnit * 0.5f;
+	
+	bool isInTileMap = StartLocation.X < halfTileMapSizeX&& StartLocation.X > -halfTileMapSizeX &&
+		StartLocation.Y < halfTileMapSizeY&& StartLocation.Y > -halfTileMapSizeY;
+	if (isInTileMap) {
+		// DecalStartLocation
+		FVector decalStartLocation = FVector::ZeroVector;
+		float lastDist_A = SizeX * SizeY * TileUnit;
+		for (auto tile : TileArr) {
+			float currentDist_A = FVector::Dist(tile.Location, StartLocation);
+			if (currentDist_A < lastDist_A) {
+				lastDist_A = currentDist_A;
+				decalStartLocation = tile.Location;
+			}
+		}
+
+		// DecalCurrentLocation
+		FVector decalCurrentLocation = FVector::ZeroVector;
+		float lastDist_B = SizeX * SizeY * TileUnit;
+		for (auto tile : TileArr) {
+			float currentDist_B = FVector::Dist(tile.Location, CurrentLocation);
+			if (currentDist_B < lastDist_B) {
+				lastDist_B = currentDist_B;
+				decalCurrentLocation = tile.Location;
+			}
+		}
+
+		// Decal 크기가 1 x 1 칸 초과면 사이즈 및 위치 연산
+		bool isSame = FVector::Dist(decalStartLocation, decalCurrentLocation) == 0;
+		if (isSame) {
+			decalLocation = decalCurrentLocation;
+		}
+		else {
+			float distPerUnit_X = FMath::Abs(decalStartLocation.X - decalCurrentLocation.X) / TileUnit + 1;
+			float distPerUnit_Y = FMath::Abs(decalStartLocation.Y - decalCurrentLocation.Y) / TileUnit + 1;
+			decalDragSize = FVector(
+				distPerUnit_X,
+				distPerUnit_Y,
+				1.f
+			);
+			decalLocation = FVector(
+				(decalStartLocation.X + decalCurrentLocation.X) * 0.5f,
+				(decalStartLocation.Y + decalCurrentLocation.Y) * 0.5f,
+				decalCurrentLocation.Z
+			);
+		}
+	}
+
+	// DecalComponent, 없으면 생성
+	UDecalComponent* currentDecalComp;
+
+	if (DecalType == EDecalType::Drag) {
+		if (DragTileDecal == nullptr) {
+			DragTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, decalSize, SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
+		}
+		currentDecalComp = DragTileDecal;		
+	}
+	else {
+		if (CursorTileDecal == nullptr) {
+			CursorTileDecal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMI, decalSize, SM->GetRelativeLocation(), FRotator().ZeroRotator, 0.0f);
+		}
+		currentDecalComp = CursorTileDecal;
 	}
 
 	// Decal 배치
-	bool canSpawnDecal = decalMI != nullptr && 
-		(CursorTileDecal->GetRelativeLocation().X != decalLocation.X || CursorTileDecal->GetRelativeLocation().Y != decalLocation.Y);
-	if (canSpawnDecal) {
-		CursorTileDecal->Activate(true);
-		CursorTileDecal->SetRelativeLocation(decalLocation);
+	bool canDisplayDecal = decalMI != nullptr && 
+		(currentDecalComp != nullptr && currentDecalComp->GetRelativeLocation().X != decalLocation.X || currentDecalComp->GetRelativeLocation().Y != decalLocation.Y);
+	if (canDisplayDecal) {
+		currentDecalComp->Activate(true);
+		if (DecalType == EDecalType::Drag) {
+			currentDecalComp->SetWorldScale3D(decalDragSize);
+		}
+		currentDecalComp->SetRelativeLocation(decalLocation);
 	}
 }
 
