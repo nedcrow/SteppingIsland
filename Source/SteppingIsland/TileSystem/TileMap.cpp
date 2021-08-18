@@ -2,12 +2,15 @@
 
 
 #include "TileMap.h"
+#include "TileMapEventManager.h"
+
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/DecalComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Kismet/GameplayStatics.h"
+
 
 // Sets default values
 ATileMap::ATileMap()
@@ -33,12 +36,12 @@ ATileMap::ATileMap()
 #if WITH_EDITOR
 void ATileMap::PostRegisterAllComponents()
 {
-	SetTiles();
+	CreateTileMaps();
 	OnGrid();
 }
 #endif
 
-void ATileMap::SetTiles()
+void ATileMap::CreateTileMaps()
 {
 	// Tilemap Mesh
 	float halfExtent = TileUnit * 0.5f;
@@ -46,22 +49,68 @@ void ATileMap::SetTiles()
 	Box->SetBoxExtent(FVector(SizeX * halfExtent, SizeY * halfExtent, 0.1f));
 	SM->SetRelativeScale3D(FVector(SizeX * tileScale, SizeY * tileScale, 0.1f));
 
-	// Tile structs
-	TileArr.Empty();
+	// TileMapLayers
+	TileMapLayers.Empty();
+	for (int i = 0; i < MaxTileMapLayer; i++) {
+		FTileMapLayer tileMap = CreateTileMap();
+		tileMap.Index = i;
+		TileMapLayers.Add(tileMap);
+	}
+}
 
-	float halfTileMapSizeX = SizeX * TileUnit * 0.5f;
-	float halfTileMapSizeY = SizeY * TileUnit * 0.5f;
+FTileMapLayer ATileMap::CreateTileMap()
+{
+	FTileMapLayer tileMap;
+
+	float halfTileMapSizeX = GetHalfTileMapSize().X;
+	float halfTileMapSizeY = GetHalfTileMapSize().Y;
 	float halfTileUnit = TileUnit * 0.5f;
 	TArray<float> TileLocationArrX;
 	TArray<float> TileLocationArrY;
 	for (int i = 0; i < halfTileMapSizeX; i++) { TileLocationArrX.Add(-halfTileMapSizeX + halfTileUnit + (TileUnit * i)); }
 	for (int i = 0; i < halfTileMapSizeY; i++) { TileLocationArrY.Add(-halfTileMapSizeY + halfTileUnit + (TileUnit * i)); }
 	for (int i = 0; i < SizeX; i++) {
-		for (int j = 0; j < SizeY; j++) {		
+		FTileRaw tileRawY;
+		for (int j = 0; j < SizeY; j++) {
 			FTile tile;
+			tile.IndexX = i;
+			tile.IndexY = j;
 			tile.bIsUsing = 1;
 			tile.Location = FVector(TileLocationArrX[i], TileLocationArrY[j], SM->GetRelativeLocation().Z);
-			TileArr.Add(tile);
+			tileRawY.TileArrY.Add(tile);
+		}
+		tileMap.TileMatrix.Add(tileRawY);
+	}
+	return tileMap;
+}
+
+FVector2D ATileMap::GetHalfTileMapSize()
+{
+	return FVector2D(SizeX * TileUnit * 0.5f, SizeY * TileUnit * 0.5f);
+}
+
+TArray<FTile> ATileMap::GetTileArr(int LayerIndex)
+{
+	if (TileMapLayers.Num() > LayerIndex) {
+		TArray<FTile> tileArr;
+		for (auto raw : TileMapLayers[LayerIndex].TileMatrix) {
+			tileArr.Append(raw.TileArrY);
+		}
+		return tileArr;
+	}
+	else {
+		return TArray<FTile>();
+	}
+}
+
+void ATileMap::CheckTileMatrix(int LayerIndex, bool IsUsing, int StartX, int EndX, int StartY, int EndY)
+{
+
+	for (int i = 0; i < EndX - StartX; i++) {
+		for (int j = 0; j < EndY - StartY; j++) {
+			int indexX = StartX + i;
+			int indexY = StartY + j;
+			TileMapLayers[LayerIndex].TileMatrix[indexX].TileArrY[indexY].bIsUsing = true;
 		}
 	}
 }
@@ -88,10 +137,11 @@ void ATileMap::SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation,
 	bool isInTileMap = StartLocation.X < halfTileMapSizeX&& StartLocation.X > -halfTileMapSizeX &&
 		StartLocation.Y < halfTileMapSizeY&& StartLocation.Y > -halfTileMapSizeY;
 	if (isInTileMap) {
+		TArray<FTile> tileArr = GetTileArr(0);
 		// DecalStartLocation
 		FVector decalStartLocation = FVector::ZeroVector;
 		float lastDist_A = SizeX * SizeY * TileUnit;
-		for (auto tile : TileArr) {
+		for (auto tile : tileArr) {
 			float currentDist_A = FVector::Dist(tile.Location, StartLocation);
 			if (currentDist_A < lastDist_A) {
 				lastDist_A = currentDist_A;
@@ -102,7 +152,7 @@ void ATileMap::SpawnHoveredDecal(FVector StartLocation, FVector CurrentLocation,
 		// DecalCurrentLocation
 		FVector decalCurrentLocation = FVector::ZeroVector;
 		float lastDist_B = SizeX * SizeY * TileUnit;
-		for (auto tile : TileArr) {
+		for (auto tile : tileArr) {
 			float currentDist_B = FVector::Dist(tile.Location, CurrentLocation);
 			if (currentDist_B < lastDist_B) {
 				lastDist_B = currentDist_B;

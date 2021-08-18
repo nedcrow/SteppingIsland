@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -20,8 +20,25 @@ USTRUCT(Atomic, BlueprintType)
 struct FTile {
 	GENERATED_BODY();
 public:
+	int IndexX;
+	int IndexY;
 	int8 bIsUsing : 1;
 	FVector Location;
+};
+
+USTRUCT(Atomic, BlueprintType)
+struct FTileRaw {
+	GENERATED_BODY();
+public:
+	TArray<FTile> TileArrY;
+};
+
+USTRUCT(Atomic, BlueprintType)
+struct FTileMapLayer {
+	GENERATED_BODY();
+public:
+	int Index;
+	TArray<FTileRaw> TileMatrix;
 };
 
 UCLASS()
@@ -56,7 +73,10 @@ private:
 	
 public:	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
-		TArray<FTile> TileArr;
+		int MaxTileMapLayer=1;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
+		TArray<FTileMapLayer> TileMapLayers;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data_Tile")
 		TArray<FVector> BuildableLocations;
@@ -66,16 +86,20 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
 		int TileUnit = 100;
 
-	/* XÃà Å¸ÀÏ °¹¼ö */
+	/* Xì¶• íƒ€ì¼ ê°¯ìˆ˜ */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
 		int SizeX = 3;
 
-	/* YÃà Å¸ÀÏ °¹¼ö */
+	/* Yì¶• íƒ€ì¼ ê°¯ìˆ˜ */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
 		int SizeY = 3;
 
-	/* Ãæµ¹Ã¼¿Í Mesh Å©±â¸¦ ¸ÊÀÇ Å¸ÀÏ °¹¼ö¿¡ ¸ÂÃã */
-	void SetTiles();
+	/* ì¶©ëŒì²´ì™€ Mesh í¬ê¸°ë¥¼ ë§µì˜ íƒ€ì¼ ê°¯ìˆ˜ì— ë§ì¶¤. íƒ€ì¼ì¢Œí‘œ ê¸°ë¡. */
+	void CreateTileMaps();
+	FTileMapLayer CreateTileMap();
+	FVector2D GetHalfTileMapSize();
+	TArray<FTile> GetTileArr(int LayerIndex);
+	void CheckTileMatrix(int LayerIndex, bool IsUsing, int StartX, int EndX, int StartY, int EndY);
 #pragma endregion
 
 #pragma region Grid Option
@@ -89,7 +113,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Grid")
 		UMaterialInterface* GridMaterial;
 
-	/* bActiveGrid È®ÀÎ ÈÄ Å¸´çÇÑ ¸ŞÅÍ¸®¾ó·Î ±³Ã¼ */
+	/* bActiveGrid í™•ì¸ í›„ íƒ€ë‹¹í•œ ë©”í„°ë¦¬ì–¼ë¡œ êµì²´ */
 	void OnGrid();
 #pragma endregion
 
@@ -118,7 +142,7 @@ public:
 
 private:
 	UMaterialInterface* GetTargetDecalMI(UMaterialInterface* MI);
-	UDecalComponent* GetTargetDecalComponent(UDecalComponent* DecalComp, UMaterialInterface* MI, FVector Size);
+	UDecalComponent* GetTargetDecalComponent(UDecalComponent* DecalComp, UMaterialInterface* MI, FVector Size);	
 #pragma endregion
 
 	
