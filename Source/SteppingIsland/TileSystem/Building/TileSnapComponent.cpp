@@ -53,7 +53,7 @@ void UTileSnapComponent::SnapToTileMap(bool bFinished)
 
 		// Z 크기 반영
 		UBoxComponent* tempBox = Cast<UBoxComponent>(GetOwner()->GetComponentByClass(UBoxComponent::StaticClass()));
-		addZ = tempBox ? tempBox->GetScaledBoxExtent().Z : 0.f;
+		addZ = tempBox ? tempBox->GetScaledBoxExtent().Z + 0.01f : 0.f;
 
 		FVector targetLocation = FVector(
 			snapableLocation.TileLocation.X + addX,
