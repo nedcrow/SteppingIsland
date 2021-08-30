@@ -87,11 +87,11 @@ public:
 		int TileUnit = 100;
 
 	/* X축 타일 갯수 */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option", Meta = (ClampMin = "1"))
 		int SizeX = 3;
 
 	/* Y축 타일 갯수 */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data_Option", Meta = (ClampMin = "1"))
 		int SizeY = 3;
 
 	/* 충돌체와 Mesh 크기를 맵의 타일 갯수에 맞춤. 타일좌표 기록. */
