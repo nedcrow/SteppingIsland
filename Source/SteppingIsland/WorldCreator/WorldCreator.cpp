@@ -67,91 +67,87 @@ void AWorldCreator::Tick(float DeltaTime)
 UTexture2D* AWorldCreator::CreateTexture() {
 	// Texture Information
 	FString FileName = FString("MyTexture");
-	int width = 1024;
-	int height = 1024;
-	uint8* pixels = (uint8*)malloc(height * width * 4); // x4 because it's RGBA. 4 integers, one for Red, one for Green, one for Blue, one for Alpha
+	uint8* pixels = (uint8*)malloc(Height * Width * 4); // x4 because it's RGBA. 4 integers, one for Red, one for Green, one for Blue, one for Alpha
 
 	// 타일정보 설정
-	FVector2D unitSize = FVector2D(FMath::Floor(width / TileCountX), FMath::Floor(height / TileCountY));
-	//int unitSizeY = FMath::Floor(height / TileCountY);
-	//int unitSizeX = FMath::Floor(width / TileCountX);
-
-	TArray<FTextureTile> tileArr;
+	FVector2D unitSize = FVector2D(FMath::Floor(Width / TileCountX), FMath::Floor(Height / TileCountY));
 	FTextureTile TempTile;
-	tileArr.Init(TempTile, TileCountX * TileCountY);
+	TileArr.Empty();
+	TileArr.Init(TempTile, TileCountX * TileCountY);
 
-	for (int i = 0; i < TileCountY; i++) {
-		int startIndex = FMath::RandRange(0, (int)FMath::Floor(TileCountX * 0.5f));
-		int length = FMath::RandRange(1, TileCountX - startIndex);
-	}
-
-	// 사이드 offset
+	// 사이드 offset 설정
 	for (int i = 0; i < TileCountX; i++) {
-		tileArr[i].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::Y); // top
-		tileArr[TileCountX * TileCountY - TileCountX -1 + i].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::Y); // bottom
+		TileArr[i].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::Y); // top
+		TileArr[TileCountX * TileCountY - TileCountX -1 + i].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::Y); // bottom
 	}
 	for (int i = 0; i < TileCountY; i++) {
-		tileArr[i * TileCountX].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::X);// left
-		tileArr[i * TileCountX + TileCountX - 1].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::X); // right
+		TileArr[i * TileCountX].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::X);// left
+		TileArr[i * TileCountX + TileCountX - 1].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::X); // right
 	}
 
-	// 모서리
-	tileArr[0].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // top left
-	tileArr[TileCountX - 1].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // top right
-	tileArr[TileCountX * TileCountY - TileCountX].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // bottom left
-	tileArr[TileCountX * TileCountY - 1].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // bottom right
-
-
-	// filling the pixels with dummy data (4 boxes: red, green, blue and white)	
+	// 모서리 offset 설정
+	TileArr[0].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // top left
+	TileArr[TileCountX - 1].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // top right
+	TileArr[TileCountX * TileCountY - TileCountX].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // bottom left
+	TileArr[TileCountX * TileCountY - 1].TileLength = FTextureTile::SetTileLength(unitSize, ETargetAxis::XY); // bottom right
 	
-	for (int i = 0; i < width * height; i++) {
-		pixels[i * 4 + 3] = 0;		
+	// 1차 그림(4 boxes: red, green, blue and white)		
+	// 전 범위를 투명하게 만들고 한 타일 씩 픽셀을 그림
+	int alphaValue = 255.f;//LayerMaxCount;
+	for (int i = 0; i < Width * Height; i++) {
+		pixels[i * 4 + 0] = 255;
+		pixels[i * 4 + 1] = 255;
+		pixels[i * 4 + 2] = 255;
+		pixels[i * 4 + 3] = 0;
 	}
-	
 
-	// 1차 그림
-	// 한 타일 씩 픽셀을 그리고 타일별 모서리 위치를 저장
 	for (int tileY = 0; tileY < TileCountY; tileY++) {
 		for (int tileX = 0; tileX < TileCountX; tileX++) {
-			// 박스 그리기
+			// 타일 크기 설정
 			int tileIndex = TileCountX * tileY + tileX;
 			int startY = unitSize.Y * tileY;
 			int endLoopY = unitSize.Y * (1 + tileY);
 			if (tileY == 0) {
-				startY = endLoopY - tileArr[tileIndex].TileLength.Y;
+				startY = endLoopY - TileArr[tileIndex].TileLength.Y;
 			}
 			else if (tileY == TileCountY - 1) {
-				endLoopY = startY + tileArr[tileIndex].TileLength.Y;
+				endLoopY = startY + TileArr[tileIndex].TileLength.Y;
 			}
 
+			// 박스 생성 및 박스 모서리 위치 저장
 			for (int y = startY; y < endLoopY; y++) {
 				int startX = unitSize.X * tileX;
 				int endLoopX = unitSize.X * (1 + tileX);
 				if (tileX == 0) {
-					startX = endLoopX - tileArr[tileIndex].TileLength.X;
+					startX = endLoopX - TileArr[tileIndex].TileLength.X;
 				}
 				else if (tileX == TileCountX - 1) {
-					endLoopX = startX + tileArr[tileIndex].TileLength.X;
+					endLoopX = startX + TileArr[tileIndex].TileLength.X;
 				}
 
 				for (int x = startX; x < endLoopX; x++) {
-					pixels[y * 4 * width + x * 4 + 0] = (TileCountX * tileY + tileX) * 10;
-					pixels[y * 4 * width + x * 4 + 1] = (TileCountX * tileY + tileX) * 10;
-					pixels[y * 4 * width + x * 4 + 2] = 255;
-					pixels[y * 4 * width + x * 4 + 3] = 255;
+					pixels[y * 4 * Width + x * 4 + 3] = alphaValue;
 				}
 
 				if (y == startY) {
-					tileArr[tileIndex].LTop = startY * 4 * width + startX * 4;
-					tileArr[tileIndex].RTop = startY * 4 * width + (endLoopX - 1) * 4;
-					tileArr[tileIndex].LBottom = (endLoopY - 1) * 4 * width + startX * 4;
-					tileArr[tileIndex].RBottom = (endLoopY - 1) * 4 * width + (endLoopX - 1) * 4;
+					TileArr[tileIndex].LTop = startY * 4 * Width + startX * 4;
+					TileArr[tileIndex].RTop = startY * 4 * Width + (endLoopX - 1) * 4;
+					TileArr[tileIndex].LBottom = (endLoopY - 1) * 4 * Width + startX * 4;
+					TileArr[tileIndex].RBottom = (endLoopY - 1) * 4 * Width + (endLoopX - 1) * 4;
 				}
 			}
+		}
+	}
 
-			// 모서리 라운딩
-			// Left에서 시계방향으로 비교 포지션 설정
-			TArray<FVector2D> comparisonPoints = {
+	// 모서리 라운딩
+	for (int tileY = 0; tileY < TileCountY; tileY++) {
+		for (int tileX = 0; tileX < TileCountX; tileX++) {
+			int tileIndex = TileCountX * tileY + tileX;
+
+			// Left(-1, 0)에서 시계방향으로 비교 포지션 설정
+			TArray<FVector2D> comparisonPoints;
+			TArray<FVector2D> comparisonPoints2; 
+			comparisonPoints = comparisonPoints2 = {
 				FVector2D(-1.f, 0.f),
 				FVector2D(-1.f, -1.f),
 				FVector2D(0.f, -1.f),
@@ -162,180 +158,245 @@ UTexture2D* AWorldCreator::CreateTexture() {
 				FVector2D(-1.f, 1.f)
 			};
 
-			// 각 코너에서 비교포지션들 중 빈칸 확인
-			TArray<int> currentCornerIndexArr = { tileArr[tileIndex].LTop, tileArr[tileIndex].RTop, tileArr[tileIndex].RBottom, tileArr[tileIndex].LBottom };
+			TArray<int> currentCornerIndexArr = { TileArr[tileIndex].LTop, TileArr[tileIndex].RTop, TileArr[tileIndex].RBottom, TileArr[tileIndex].LBottom };
 			for (auto cornerIndex : currentCornerIndexArr) {
-				TArray<ECorner> cornerTypeArr = { ECorner::LeftTop, ECorner::RightTop, ECorner::RightBottom, ECorner::LeftBottom };
-				ECorner currentCorner = ECorner::None;
-				for (int i = 0; i < 4; i++) {
-					int emptyPixelCount = 0;
-					for (int j = 0; j < 3; j++) {
-						int index = cornerIndex + (comparisonPoints[j].Y * 4 * width) + (comparisonPoints[j].X * 4);
-						if (pixels[cornerIndex + 3] == 0) UE_LOG(LogTemp, Warning, TEXT("(Error)"));
-						if (pixels[index + 3] == 0) emptyPixelCount++;
-					}
-
-					if (emptyPixelCount == 3) {
-						if (currentCorner == ECorner::None) {
-							currentCorner = cornerTypeArr[i];
-						}
-						else {
-							currentCorner = ECorner::None;
-							break;
-						}
-					}
-
-					TArray<FVector2D> temp;
-					temp.Add(comparisonPoints[0]);
-					temp.Add(comparisonPoints[1]);
-					comparisonPoints.RemoveAt(0);
-					comparisonPoints.RemoveAt(0);
-					comparisonPoints.Add(temp[0]);
-					comparisonPoints.Add(temp[1]);
-				}
-
-
-				const UEnum* enumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECorner"), true);
-				if (!enumPtr)
-				{
-					UE_LOG(LogTemp, Warning, TEXT("(invald)"));
-				}
-				else {
-					UE_LOG(LogTemp, Warning, TEXT("(%s)"), *enumPtr->GetNameStringByIndex((int32)currentCorner));
-				}
-
-				int tileLengthX = tileArr[tileIndex].TileLength.X;
-				int tileLengthY = tileArr[tileIndex].TileLength.Y;
+				// 각 모서리에서 비교포지션들 중 빈칸 확인해서 코너타입 확인
+				int tileLengthX = TileArr[tileIndex].TileLength.X;
+				int tileLengthY = TileArr[tileIndex].TileLength.Y;
 				int thickX;
 				int thickY;
 				TArray<int> xArr;
 				TArray<int> yArr;
-				FVector2D circlePivot;
 
-				switch (currentCorner)
-				{
-				case ECorner::LeftTop:
-					if (tileX != 0 && tileY == 0) {
-						int preTileLengthY = tileArr[TileCountX * tileY + tileX - 1].TileLength.Y;						
-						tileLengthY = tileLengthY <= preTileLengthY ? tileLengthY : tileLengthY - preTileLengthY;
+				// 안쪽 모서리 (픽셀의 알파값 변화가 발생하니 바깥보다 안쪽 먼저 실행)
+				// thick 차이 - 길이 설정 시 비교 대상에서 자신을 마이너스(outer는 반대), CornerThickness 무시하고 thickX(Y)길이의 반 사용
+				// 한 블럭에 2개 이상이 가능함.
+				if (bUseRounding_Inner) {
+					TArray<int> emptyPixelIndexArr;
+					ECornerType_Inner currentCorner_Inner = ECornerType_Inner::None;
+					for (int i = 0; i < comparisonPoints2.Num(); i++) {
+						int index = cornerIndex + (comparisonPoints2[i].Y * 4 * Width) + (comparisonPoints2[i].X * 4);
+						if (pixels[cornerIndex + 3] == 0) UE_LOG(LogTemp, Warning, TEXT("(Error)"));
+						if (pixels[index + 3] == 0) emptyPixelIndexArr.Add(i);
+						UE_LOG(LogTemp, Warning, TEXT("Error: index: %d, (%f, %f), alpha: %d"), i, comparisonPoints2[i].X, comparisonPoints2[i].Y, pixels[index + 3]);
 					}
-					if (tileY != 0 && tileX == 0) {
-						int preTileLengthX = tileArr[TileCountX * (tileY - 1) + tileX].TileLength.X;
-						tileLengthX = tileLengthX - preTileLengthX;
-					}
-					thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
-					thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
-					circlePivot = FVector2D(tileArr[tileIndex].LTop + thickX * 4, tileArr[tileIndex].LTop + thickY * height * 4 + thickX * 4);
 
-					if (tileY == 0 || tileX == 0) {
-						for (int i = 0; i < thickY; i++) {		
-							float thickXf = thickX*1.f;
-							float x = thickY * thickY - i * i;
-							float ratio = FMath::Floor(thickXf / thickY * 1000.f) * 0.001f;
-							xArr.Add((FMath::Floor(ratio * FMath::Sqrt(x))));
+					TArray<ECornerType_Inner> subCornerTypeArr = { ECornerType_Inner::LeftBottomL, ECornerType_Inner::RightTopT, ECornerType_Inner::LeftTopT, ECornerType_Inner::RightBottomR,
+						ECornerType_Inner::RightTopR, ECornerType_Inner::LeftBottomB, ECornerType_Inner::RightBottomB, ECornerType_Inner::LeftTopL };
+					if (emptyPixelIndexArr.Num() == 2) {
+						if (emptyPixelIndexArr[0] == 0) {
+							if (emptyPixelIndexArr[1] == 1) {
+								currentCorner_Inner = ECornerType_Inner::LeftBottomL;
+							}
+							else {
+								currentCorner_Inner = ECornerType_Inner::LeftTopL;
+							}
+						}
+						else {
+							currentCorner_Inner = subCornerTypeArr[emptyPixelIndexArr[0]];
 						}
 					}
 
-					for (int y = 0; y < xArr.Num(); y++) {
-						int reverseIndex = xArr.Num() - y - 1;
-						int loopCount = thickX - xArr[reverseIndex];
-						for (int x = 0; x < loopCount; x++) {
-							pixels[tileArr[tileIndex].LTop + (y * width * 4) + (x * 4) + 3] = 0;
-						}
+					const UEnum* enumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECornerType_Inner"), true);
+					if (!enumPtr)
+					{
+						UE_LOG(LogTemp, Warning, TEXT("(invald)"));
 					}
-					break;
-				case ECorner::RightTop:	
-					if (tileX != TileCountX - 1 && tileY == 0) {
-						int nextTileLengthY = tileArr[TileCountX * tileY + tileX + 1].TileLength.Y;
-						tileLengthY = tileLengthY - nextTileLengthY;
-					}
-					if (tileY != 0 && tileX == TileCountX-1) {
-						int preTileLengthX = tileArr[TileCountX * (tileY - 1) + tileX].TileLength.X;
-						tileLengthX = tileLengthX - preTileLengthX;
-					}
-					thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
-					thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
-					circlePivot = FVector2D(tileArr[tileIndex].RTop - thickX * 4, tileArr[tileIndex].RTop + thickY * height * 4 + thickX * 4);
-
-					if (tileY == 0 || tileX == TileCountX - 1) {
-						for (int i = 0; i < thickY; i++) {
-							float thickXf = thickX * 1.f;
-							float x = thickY * thickY - i * i;
-							float ratio = FMath::Floor(thickXf / thickY * 1000.f) * 0.001f;
-							xArr.Add((FMath::Floor(ratio * FMath::Sqrt(x))));
-						}
+					else {
+						UE_LOG(LogTemp, Warning, TEXT("currentCorner_Inner: (%s)"), *enumPtr->GetNameStringByIndex((int32)currentCorner_Inner));
 					}
 
-					for (int y = 0; y < xArr.Num(); y++) {
-						int reverseIndex = xArr.Num() - y - 1;
-						int loopCount = thickX - xArr[reverseIndex];
-						for (int x = loopCount; x >= 0; x--) {
-							pixels[tileArr[tileIndex].RTop + (y * width * 4) + (-x * 4) + 3] = 0;
-						}
+					// 해당 안쪽 코너 타입에 맞는 모서리 그리기.
+					switch (currentCorner_Inner)
+					{
+					case ECornerType_Inner::LeftBottomL:
+					{
+						int nextTileLengthX = TileArr[(tileY + 1) * TileCountX + tileX].TileLength.X;
+						tileLengthX = nextTileLengthX - tileLengthX;
+						thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
+						thickY = tileLengthY * 0.5f;
+						TArray<int>indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].LBottom, EBrushVector::DecX, EBrushVector::DecY, 0, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
 					}
-					break;
-				case ECorner::RightBottom:
-					if (tileX != TileCountX - 1 && tileY == TileCountY - 1) {
-						int nextTileLengthY = tileArr[TileCountX * tileY + tileX + 1].TileLength.Y;
-						tileLengthY = tileLengthY - nextTileLengthY;
+					case ECornerType_Inner::RightTopT:
+					{
+						int nextTileLengthY = TileArr[tileY * TileCountX + tileX + 1].TileLength.Y;
+						tileLengthY = nextTileLengthY - tileLengthY;
+						thickX = tileLengthX * 0.5f;
+						thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f); 						
+						TArray<int>indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].RTop, EBrushVector::DecX, EBrushVector::DecY, 1, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
 					}
-					if (tileY != TileCountY - 1 && tileX == TileCountX - 1) {
-						int nextTileLengthX = tileArr[TileCountX * (tileY + 1) + tileX].TileLength.X;
-						tileLengthX = tileLengthX - nextTileLengthX;
+					case ECornerType_Inner::LeftTopT:
+					{
+						int preTileLengthY = TileArr[tileY * TileCountX + tileX - 1].TileLength.Y;
+						tileLengthY = preTileLengthY - tileLengthY;
+						thickX = tileLengthX * 0.5f;
+						thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
+						TArray<int>indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].LTop, EBrushVector::IncX, EBrushVector::DecY, 0, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
 					}
-					thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
-					thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
-					circlePivot = FVector2D(tileArr[tileIndex].RBottom - thickX * 4, tileArr[tileIndex].RBottom + thickY * height * 4 - thickX * 4);
+					case ECornerType_Inner::RightBottomR:
+					{
+						int nextTileLengthX = TileArr[(tileY + 1) * TileCountX + tileX].TileLength.X;
+						tileLengthX = nextTileLengthX - tileLengthX;
+						thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
+						thickY = tileLengthY * 0.5f;
+						TArray<int> indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].RBottom, EBrushVector::IncX, EBrushVector::DecY, 0, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
+					}
+					case ECornerType_Inner::RightTopR: 
+					{
+						int preTileLengthX = TileArr[(tileY - 1) * TileCountX + tileX].TileLength.X;
+						tileLengthX = preTileLengthX - tileLengthX;
+						thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
+						thickY = tileLengthY * 0.5f;
+						TArray<int> indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].RTop, EBrushVector::IncX, EBrushVector::IncY, 0, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
+					}
+					case ECornerType_Inner::LeftBottomB:
+					{
+						int preTileLengthY = TileArr[tileY * TileCountX + tileX - 1].TileLength.Y;
+						tileLengthY = preTileLengthY - tileLengthY;
+						thickX = tileLengthX * 0.5f;
+						thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
+						TArray<int> indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].LBottom, EBrushVector::IncX, EBrushVector::IncY, 0, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
+					}
+					case ECornerType_Inner::RightBottomB:
+					{
+						int nextTileLengthY = TileArr[tileY * TileCountX + tileX + 1].TileLength.Y;
+						tileLengthY = nextTileLengthY - tileLengthY;
+						thickX = tileLengthX * 0.5f;
+						thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
+						TArray<int>indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].RBottom, EBrushVector::DecX, EBrushVector::IncY, 1, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
+					}
+					case ECornerType_Inner::LeftTopL:
+					{
+						int preTileLengthX = TileArr[(tileY - 1) * TileCountX + tileX].TileLength.X;
+						tileLengthX = preTileLengthX - tileLengthX;
+						thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
+						thickY = tileLengthY * 0.5f;
+						TArray<int> indexes = GetRoundIndexesOfInner(thickX, thickY, TileArr[tileIndex].LTop, EBrushVector::DecX, EBrushVector::IncY, 0, 0);
+						for (auto index : indexes) { pixels[index] = alphaValue; }
+						break;
+					}
+					default:
+						break;
+					}
+				}
 
-					if (tileY == TileCountY - 1 || tileX == TileCountX - 1) {
-						for (int i = 0; i < thickY; i++) {
-							float thickXf = thickX * 1.f;
-							float x = thickY * thickY - i * i;
-							float ratio = FMath::Floor(thickXf / thickY * 1000.f) * 0.001f;
-							xArr.Add((FMath::Floor(ratio * FMath::Sqrt(x))));
+				// 바깥 모서리
+				if (bUseRounding_Outer) {
+					TArray<ECornerType_Outer> cornerTypeArr = { ECornerType_Outer::LeftTop, ECornerType_Outer::RightTop, ECornerType_Outer::RightBottom, ECornerType_Outer::LeftBottom };
+					ECornerType_Outer currentCorner_Outer = ECornerType_Outer::None;
+					for (int i = 0; i < 4; i++) {
+						int emptyPixelCount_Outer = 0;
+						for (int j = 0; j < 3; j++) {
+							int index = cornerIndex + (comparisonPoints[j].Y * 4 * Width) + (comparisonPoints[j].X * 4);
+							if (pixels[cornerIndex + 3] == 0) UE_LOG(LogTemp, Warning, TEXT("(Error)"));
+							if (pixels[index + 3] == 0) emptyPixelCount_Outer++;
 						}
+
+						if (emptyPixelCount_Outer == 3) {
+							if (currentCorner_Outer == ECornerType_Outer::None) {
+								currentCorner_Outer = cornerTypeArr[i];
+							}
+							else {
+								currentCorner_Outer = ECornerType_Outer::None;
+								break;
+							}
+						}
+
+						TArray<FVector2D> temp;
+						temp.Add(comparisonPoints[0]);
+						temp.Add(comparisonPoints[1]);
+						comparisonPoints.RemoveAt(0);
+						comparisonPoints.RemoveAt(0);
+						comparisonPoints.Add(temp[0]);
+						comparisonPoints.Add(temp[1]);
 					}
 
-					for (int y = 0; y < xArr.Num(); y++) {
-						int reverseIndex = xArr.Num() - y - 1;
-						int loopCount = thickX - xArr[reverseIndex];
-						for (int x = loopCount; x >= 0; x--) {
-							pixels[tileArr[tileIndex].RBottom - (y * width * 4) + (-x * 4) + 3] = 0;
-						}
+					// 현재 코너 확인
+					/*const UEnum* enumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECornerType_Outer"), true);
+					if (!enumPtr)
+					{
+						UE_LOG(LogTemp, Warning, TEXT("(invald)"));
 					}
-					break;
-				case ECorner::LeftBottom:
-					if (tileX != 0 && tileY == TileCountY - 1) {
-						int preTileLengthY = tileArr[TileCountX * tileY + tileX - 1].TileLength.Y;
-						tileLengthY = tileLengthY - preTileLengthY;
-					}
-					if (tileY != TileCountY - 1 && tileX == 0) {
-						int nextTileLengthX = tileArr[TileCountX * (tileY + 1) + tileX].TileLength.X;
-						tileLengthX = tileLengthX - nextTileLengthX;
-					}
-					thickX = CornerThickness < tileLengthX * 0.5f ? CornerThickness : FMath::Floor(tileLengthX * 0.5f);
-					thickY = CornerThickness < tileLengthY * 0.5f ? CornerThickness : FMath::Floor(tileLengthY * 0.5f);
-					circlePivot = FVector2D(tileArr[tileIndex].LBottom + thickX * 4, tileArr[tileIndex].LBottom + thickY * height * 4 - thickX * 4);
+					else {
+						UE_LOG(LogTemp, Warning, TEXT("CurrentCorner: (%s)"), *enumPtr->GetNameStringByIndex((int32)currentCorner_Outer));
+					}*/
 
-					if (tileY == TileCountY - 1 || tileX == 0) {
-						for (int i = 0; i < thickY; i++) {
-							float thickXf = thickX * 1.f;
-							float x = thickY * thickY - i * i;
-							float ratio = FMath::Floor(thickXf / thickY * 1000.f) * 0.001f;
-							xArr.Add((FMath::Floor(ratio * FMath::Sqrt(x))));
+					// 해당 바깥 코너 타입에 맞는 모서리 깎기.
+					switch (currentCorner_Outer)
+					{
+					case ECornerType_Outer::LeftTop:
+					{
+						if (tileX != 0 && tileY == 0) {
+							int preTileLengthY = TileArr[TileCountX * tileY + tileX - 1].TileLength.Y;
+							tileLengthY = tileLengthY <= preTileLengthY ? tileLengthY : tileLengthY - preTileLengthY;
 						}
-					}
-
-					for (int y = 0; y < xArr.Num(); y++) {
-						int reverseIndex = xArr.Num() - y - 1;
-						int loopCount = thickX - xArr[reverseIndex];
-						for (int x = loopCount; x >= 0; x--) {
-							pixels[tileArr[tileIndex].LBottom - (y * width * 4) + (x * 4) + 3] = 0;
+						if (tileY != 0 && tileX == 0) {
+							int preTileLengthX = TileArr[TileCountX * (tileY - 1) + tileX].TileLength.X;
+							tileLengthX = tileLengthX - preTileLengthX;
 						}
+						TArray<int> indexes = GetRoundIndexesOfOuter(tileLengthX, tileLengthY, TileArr[tileIndex].LTop, EBrushVector::IncX, EBrushVector::IncY);
+						for (auto index : indexes) { pixels[index] = 0; }
+						break; 
 					}
-					break;
-				default:
-					break;
+					case ECornerType_Outer::RightTop:
+					{
+						if (tileX != TileCountX - 1 && tileY == 0) {
+							int nextTileLengthY = TileArr[TileCountX * tileY + tileX + 1].TileLength.Y;
+							tileLengthY = tileLengthY - nextTileLengthY;
+						}
+						if (tileY != 0 && tileX == TileCountX - 1) {
+							int preTileLengthX = TileArr[TileCountX * (tileY - 1) + tileX].TileLength.X;
+							tileLengthX = tileLengthX - preTileLengthX;
+						}
+						TArray<int> indexes = GetRoundIndexesOfOuter(tileLengthX, tileLengthY, TileArr[tileIndex].RTop, EBrushVector::DecX, EBrushVector::IncY);
+						for (auto index : indexes) { pixels[index] = 0; }
+						break;
+					}
+					case ECornerType_Outer::RightBottom:
+					{
+						if (tileX != TileCountX - 1 && tileY == TileCountY - 1) {
+							int nextTileLengthY = TileArr[TileCountX * tileY + tileX + 1].TileLength.Y;
+							tileLengthY = tileLengthY - nextTileLengthY;
+						}
+						if (tileY != TileCountY - 1 && tileX == TileCountX - 1) {
+							int nextTileLengthX = TileArr[TileCountX * (tileY + 1) + tileX].TileLength.X;
+							tileLengthX = tileLengthX - nextTileLengthX;
+						}
+						TArray<int> indexes = GetRoundIndexesOfOuter(tileLengthX, tileLengthY, TileArr[tileIndex].RBottom, EBrushVector::DecX, EBrushVector::DecY);
+						for (auto index : indexes) { pixels[index] = 0; }
+						break;
+					}
+					case ECornerType_Outer::LeftBottom:
+					{
+						if (tileX != 0 && tileY == TileCountY - 1) {
+							int preTileLengthY = TileArr[TileCountX * tileY + tileX - 1].TileLength.Y;
+							tileLengthY = tileLengthY - preTileLengthY;
+						}
+						if (tileY != TileCountY - 1 && tileX == 0) {
+							int nextTileLengthX = TileArr[TileCountX * (tileY + 1) + tileX].TileLength.X;
+							tileLengthX = tileLengthX - nextTileLengthX;
+						}
+						TArray<int> indexes = GetRoundIndexesOfOuter(tileLengthX, tileLengthY, TileArr[tileIndex].LBottom, EBrushVector::IncX, EBrushVector::DecY);
+						for (auto index : indexes) { pixels[index] = 0; }
+						break;
+					}
+					default:
+						break;
+					}
 				}
 			}
 		}
@@ -355,17 +416,17 @@ UTexture2D* AWorldCreator::CreateTexture() {
 
 	// Texture Settings
 	Texture->PlatformData = new FTexturePlatformData();
-	Texture->PlatformData->SizeX = width;
-	Texture->PlatformData->SizeY = height;
+	Texture->PlatformData->SizeX = Width;
+	Texture->PlatformData->SizeY = Height;
 	Texture->PlatformData->PixelFormat = PF_R8G8B8A8;
 
 	// Passing the pixels information to the texture	
 	FTexture2DMipMap* Mip = new(Texture->PlatformData->Mips) FTexture2DMipMap();
-	Mip->SizeX = width;
-	Mip->SizeY = height;
+	Mip->SizeX = Width;
+	Mip->SizeY = Height;
 	Mip->BulkData.Lock(LOCK_READ_WRITE);
-	uint8* TextureData = (uint8*)Mip->BulkData.Realloc(height * width * sizeof(uint8) * 4);
-	FMemory::Memcpy(TextureData, pixels, sizeof(uint8) * height * width * 4);
+	uint8* TextureData = (uint8*)Mip->BulkData.Realloc(Height * Width * sizeof(uint8) * 4);
+	FMemory::Memcpy(TextureData, pixels, sizeof(uint8) * Height * Width * 4);
 	Mip->BulkData.Unlock();
 
 	// Updating Texture & mark it as unsaved
@@ -392,6 +453,56 @@ FCanvasMaterialTransform AWorldCreator::GetCanvasMaterialTransform(FVector2D Pos
 	result.Size = Size * Scale;
 
 	return result;
+}
+
+TArray<int> AWorldCreator::GetRoundIndexesOfInner(int ThickX, int ThickY, int TileIndex, EBrushVector XVector, EBrushVector YVector, int AddX, int AddY)
+{
+	TArray<int> indexArr;
+	TArray<int> xArr;
+	for (int i = 0; i < ThickY; i++) {
+		float thickXfloat = ThickX * 1.f;
+		float x = ThickY * ThickY - i * i;
+		float ratio = FMath::Floor(thickXfloat / ThickY * 1000.f) * 0.001f;
+		xArr.Add((FMath::Floor(ratio * FMath::Sqrt(x))));
+	}
+
+	for (int y = 0; y < xArr.Num(); y++) {
+		int reverseIndex = xArr.Num() - y - 1;
+		int loopCount = ThickX - xArr[reverseIndex];
+		int yVector = YVector == EBrushVector::IncY ? 1 : -1;
+		for (int x = 0; x < loopCount; x++) {
+			int tempX = XVector == EBrushVector::IncX ? x : -(loopCount - x);
+			indexArr.Add(TileIndex + (yVector * (y - AddY) * Width * 4) + ((tempX + AddX) * 4) + 3);
+		}
+	}
+
+	return indexArr;
+}
+
+TArray<int> AWorldCreator::GetRoundIndexesOfOuter(int TileLengthX, int TileLengthY, int TileIndex, EBrushVector XVector, EBrushVector YVector)
+{
+	int thickX = CornerThickness < TileLengthX * 0.5f ? CornerThickness : FMath::Floor(TileLengthX * 0.5f);
+	int thickY = CornerThickness < TileLengthY * 0.5f ? CornerThickness : FMath::Floor(TileLengthY * 0.5f);
+	TArray<int> indexArr;
+	TArray<int> xArr;	
+
+	for (int i = 0; i < thickY; i++) {
+		float thickXf = thickX * 1.f;
+		float x = thickY * thickY - i * i;
+		float ratio = FMath::Floor(thickXf / thickY * 1000.f) * 0.001f;
+		xArr.Add((FMath::Floor(ratio * FMath::Sqrt(x))));
+	}
+
+	for (int y = 0; y < xArr.Num(); y++) {
+		int reverseIndex = xArr.Num() - y - 1;
+		int loopCount = thickX - xArr[reverseIndex];
+		int yVector = YVector == EBrushVector::IncY ? 1 : -1;
+		for (int x = 0; x < loopCount; x++) {
+			int tempX = XVector == EBrushVector::IncX ? x : -(loopCount - 1 - x);
+			indexArr.Add(TileIndex + (yVector * y * Width * 4) + (tempX * 4) + 3);
+		}
+	}
+	return indexArr;
 }
 
 FVector2D FTextureTile::SetTileLength(FVector2D UnitSize, ETargetAxis TargetAxis)

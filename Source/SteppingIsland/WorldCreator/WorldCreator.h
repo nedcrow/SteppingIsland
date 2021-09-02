@@ -16,7 +16,7 @@ enum class ETargetAxis : uint8
 };
 
 UENUM(BlueprintType)
-enum class ECorner : uint8
+enum class ECornerType_Outer : uint8
 {
 	None = 0				UMETA(DisplayName = "None"),
 	LeftTop = 1				UMETA(DisplayName = "LeftTop"),
@@ -25,6 +25,28 @@ enum class ECorner : uint8
 	RightBottom = 4			UMETA(DisplayName = "RightBottom"),
 };
 
+UENUM(BlueprintType)
+enum class ECornerType_Inner : uint8
+{
+	None = 0				UMETA(DisplayName = "None"),
+	LeftBottomL = 1			UMETA(DisplayName = "LeftBottomL"),
+	RightTopT = 2			UMETA(DisplayName = "RightTopT"),
+	LeftTopT = 3			UMETA(DisplayName = "LeftTopT"),
+	RightBottomR = 4		UMETA(DisplayName = "RightBottomR"),
+	RightTopR = 5			UMETA(DisplayName = "RightTopR"),
+	LeftBottomB = 6			UMETA(DisplayName = "LeftBottomB"),
+	RightBottomB = 7		UMETA(DisplayName = "RightBottomB"),
+	LeftTopL = 8			UMETA(DisplayName = "LeftTopL"),
+};
+
+UENUM(BlueprintType)
+enum class EBrushVector : uint8
+{
+	IncX = 0				UMETA(DisplayName = "IncX"),
+	DecX = 1				UMETA(DisplayName = "DecX"),
+	IncY = 2				UMETA(DisplayName = "IncX"),
+	DecY = 3				UMETA(DisplayName = "DecY"),	
+};
 
 USTRUCT(BlueprintType)
 struct FCanvasMaterialTransform {
@@ -69,15 +91,25 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data", Meta = (ClampMin = "1"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1"))
 	int LayerMaxCount = 5;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data", Meta = (ClampMin = "1", ClampMax = 512))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = 512))
 	int TileCountX = 4;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data", Meta = (ClampMin = "1", ClampMax = 512))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = 512))
 	int TileCountY = 4;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base")
 	int CornerThickness = 64;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Texture", Meta = (ClampMin = "16"))
+	int Width = 1024;	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Texture", Meta = (ClampMin = "16"))
+	int Height = 1024;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Option")
+	uint8 bUseRounding_Outer : 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Option")
+	uint8 bUseRounding_Inner : 1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data")
 	class UTextureRenderTarget2D* RenderTarget;
@@ -91,4 +123,15 @@ public:
 
 	UFUNCTION()
 	FCanvasMaterialTransform GetCanvasMaterialTransform(FVector2D Position, FVector2D Size, float Scale=1.f);
+
+// Texture Information
+protected:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "TileInformation")
+	TArray<FTextureTile> TileArr;
+
+	UFUNCTION()	
+	TArray<int> GetRoundIndexesOfInner(int ThickX, int ThickY, int TileIndex, EBrushVector XVector, EBrushVector YVector, int AddX=0, int AddY=0);
+
+	UFUNCTION()
+	TArray<int> GetRoundIndexesOfOuter(int TileLengthX, int TileLengthY, int TileIndex, EBrushVector XVector, EBrushVector YVector);
 };
