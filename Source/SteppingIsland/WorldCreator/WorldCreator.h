@@ -85,6 +85,12 @@ class STEPPINGISLAND_API AWorldCreator : public AActor
 public:	
 	AWorldCreator();
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class USphereComponent* Sphere;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MaterialConverter")
+	class UStaticMeshComponent* MaterialConverter;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -93,17 +99,21 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1"))
 	int LayerMaxCount = 5;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = 512))
-	int TileCountX = 4;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = 512))
-	int TileCountY = 4;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = "512"))
+	int TileCountX = 5;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = "512"))
+	int TileCountY = 5;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base")
 	int CornerThickness = 64;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data|Base")
+	TArray<int> TileAlphaArray;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data|Base")
+	TArray<int> DistanceFromCenterArr;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Texture", Meta = (ClampMin = "16"))
-	int Width = 1024;	
+	int Width = 256;	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Texture", Meta = (ClampMin = "16"))
-	int Height = 1024;
+	int Height = 256;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Option")
 	uint8 bUseRounding_Outer : 1;
@@ -114,8 +124,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data")
 	class UTextureRenderTarget2D* RenderTarget;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	UMaterialInterface* HeightBrushMI;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Brush")
+	UMaterialInstance* HeightBrushMI;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Brush", Meta = (ClampMin = "0.0001", ClampMax = "128"))
+	float HeightBrushScale = 0.02f;
 
 	/* reference http://www.danielmayor.com/ue4-create-texture-editor-plugin */
 	UFUNCTION()
@@ -134,4 +146,8 @@ protected:
 
 	UFUNCTION()
 	TArray<int> GetRoundIndexesOfOuter(int TileLengthX, int TileLengthY, int TileIndex, EBrushVector XVector, EBrushVector YVector);
+
+
+public:
+	//void UpdateTextureRegion(FTexture2DRHIRef TextureRHI, int32 MipIndex, uint32 NumRegions, FUpdateTextureRegion2D Region, uint32 SrcPitch, uint32 SrcBpp, uint8* SrcData, TFunction<void(uint8* SrcData)> DataCleanupFunc = [](uint8*) {});
 };
