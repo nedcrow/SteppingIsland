@@ -97,6 +97,8 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 
+	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = ""))
+	//int SeedValue = 5; // 지형RandomSeed, 자원배치, 이벤트 배치, 등등
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1"))
 	int LayerMaxCount = 5;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Base", Meta = (ClampMin = "1", ClampMax = "512"))
@@ -108,7 +110,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data|Base")
 	TArray<int> TileAlphaArray;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Data|Base")
-	TArray<int> DistanceFromCenterArr;
+	TArray<int> DistanceValueFromCenterArr;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Texture", Meta = (ClampMin = "16"))
 	int Width = 256;	
@@ -129,9 +131,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data|Brush", Meta = (ClampMin = "0.0001", ClampMax = "128"))
 	float HeightBrushScale = 0.02f;
 
-	/* reference http://www.danielmayor.com/ue4-create-texture-editor-plugin */
 	UFUNCTION()
-	UTexture2D* CreateTexture();
+	UTexture2D* CreateTexture(); /* reference http://www.danielmayor.com/ue4-create-texture-editor-plugin */	
 
 	UFUNCTION()
 	FCanvasMaterialTransform GetCanvasMaterialTransform(FVector2D Position, FVector2D Size, float Scale=1.f);

@@ -85,8 +85,7 @@ void AWorldCreator::Tick(float DeltaTime)
 }
 
 UTexture2D* AWorldCreator::CreateTexture() {
-	// Texture Information
-	FString FileName = FString("MyTexture");
+
 	uint8* pixels = (uint8*)malloc(Height * Width * 4); // x4 because it's RGBA. 4 integers, one for Red, one for Green, one for Blue, one for Alpha
 
 	// 타일정보 설정
@@ -414,39 +413,74 @@ UTexture2D* AWorldCreator::CreateTexture() {
 	int halfXSize = xSize * 0.5f;
 	int halfYSize = ySize * 0.5f;
 
+	// CenterPoints
+	FVector2D LimitedMinusSize = unitSize * 0.4f;
+	FVector2D centerPoint = FVector2D(xSize / 2.f, ySize / 2.f);
+	TArray<FVector2D> CenterPoints;
+	CenterPoints.Add(centerPoint); // center
+	CenterPoints.Add(FVector2D(
+		centerPoint.X - ((TileArr[0].TileLength.X / unitSize.X) * LimitedMinusSize.X),
+		centerPoint.Y - ((TileArr[0].TileLength.Y / unitSize.Y) * LimitedMinusSize.Y)
+	)); // top left	
+	CenterPoints.Add(FVector2D(
+		centerPoint.X + ((TileArr[TileCountX + 1].TileLength.X / unitSize.X) * LimitedMinusSize.X),
+		centerPoint.Y - ((TileArr[TileCountX - 1].TileLength.Y / unitSize.Y) * LimitedMinusSize.Y)
+	)); // top right
+	CenterPoints.Add(FVector2D(
+		centerPoint.X - ((TileArr[TileCountX * TileCountY - TileCountX].TileLength.X / unitSize.X) * LimitedMinusSize.X),
+		centerPoint.Y + ((TileArr[TileCountX * TileCountY - TileCountX].TileLength.Y / unitSize.Y) * LimitedMinusSize.Y)
+	)); // bottom left
+	CenterPoints.Add(FVector2D(
+		centerPoint.X + ((TileArr[TileCountX * TileCountY - 1].TileLength.X / unitSize.X) * LimitedMinusSize.X),
+		centerPoint.Y + ((TileArr[TileCountX * TileCountY - 1].TileLength.Y / unitSize.Y) * LimitedMinusSize.Y)
+	)); // bottom right
+
 	// DistanceFromCenterArr
 	int minDist = -1;
+	float deformationPower = 1.2f;
 	for (int y = 0; y < ySize; y++) {
-		for (int x = 0; x < xSize; x++) {
-			int dist = FVector2D::Distance(FVector2D(x, y), FVector2D(xSize / 2.f, ySize / 2.f));
+		for (int x = 0; x < xSize; x++) {	
+			float xSizePercentage = (FMath::Abs(halfXSize - x) * 1.0f) / xSize; // 0.5 ~ 0;
+			float ySizePercentage = 0.5f - (FMath::Abs(halfYSize - y) * 1.0f) / ySize; // 0.5 ~ 0;
+			float deformationPercentage = (float)FMath::Pow(1.0f - xSizePercentage + ySizePercentage, deformationPower);
+			int dist = FVector2D::Distance(FVector2D(x, y), CenterPoints[0]);
+			for (auto point : CenterPoints) {
+				int tempDist = FVector2D::Distance(FVector2D(x, y), point);
+				dist = tempDist > dist ? dist : tempDist;
+			}
+
 			if (TileAlphaArray[y * xSize + x] == 255) {
-				DistanceFromCenterArr.Add(-1);
+				DistanceValueFromCenterArr.Add(-1);
 				minDist = dist < minDist || minDist < 0 ? dist : minDist;
 			}
 			else {
-				DistanceFromCenterArr.Add(dist);
+				DistanceValueFromCenterArr.Add(dist * deformationPercentage * 0.85f);
 			}
 		}
 	}
 
-	TArray<int> alphaArr;
+	TArray<int> alphaValueArr;
 	for (int i=0; i<LayerMaxCount - 1; i++) {
-		alphaArr.Add(255 * (1 - (1.f / LayerMaxCount * i)));
+		alphaValueArr.Add(255 * (1 - (1.f / LayerMaxCount * i)));
 	}
 
-	// 중앙과 짧은 거리 순으로 texture alpha 값 변경
-	int distanceUnit = minDist / (LayerMaxCount-1);
+	// 섬 중앙 드로잉(중앙과 짧은 거리 순으로 texture alpha 값 변경)
+	int distanceUnitCenterToMin = minDist / (LayerMaxCount - 1);	
 	for (int y = 0; y < ySize; y++) {
 		for (int x = 0; x < xSize; x++) {
-			int dist = DistanceFromCenterArr[y * xSize + x];
+			int dist = DistanceValueFromCenterArr[y * xSize + x];
 			if (dist != -1) {
-				for (int i = alphaArr.Num() - 1; i > 0; i--) {
-					if (dist <= distanceUnit) {
+				for (int i = alphaValueArr.Num() - 1; i > 0; i--) {
+					if (dist <= distanceUnitCenterToMin) {
 						pixels[y * 4 * Width + x * 4 + 3] = 0;
 						goto EndDrawing;
 					}
-					if (dist <= minDist - (distanceUnit * (i - 1))) {
-						pixels[y * 4 * Width + x * 4 + 3] = alphaArr[i];
+					else if (FVector2D::Distance(FVector2D(x, y), CenterPoints[0]) <= LimitedMinusSize.X * 0.6f) {
+						pixels[y * 4 * Width + x * 4 + 3] = 0;
+						goto EndDrawing;
+					}
+					if (dist <= minDist - (distanceUnitCenterToMin * (i - 1))) {
+						pixels[y * 4 * Width + x * 4 + 3] = alphaValueArr[i];
 						goto EndDrawing;
 					}
 				}
@@ -464,6 +498,7 @@ UTexture2D* AWorldCreator::CreateTexture() {
 	UPackage* package = CreatePackage(nullptr, *pathPackage); 
 
 	// Create the Texture
+	FString FileName = FString("MyTexture");
 	FName textureName = "WorldMap"; //MakeUniqueObjectName(package, UTexture2D::StaticClass(), FName(*FileName));
 	UTexture2D* texture = NewObject<UTexture2D>(package, textureName, RF_Public | RF_Standalone);
 
@@ -558,26 +593,6 @@ TArray<int> AWorldCreator::GetRoundIndexesOfOuter(int TileLengthX, int TileLengt
 	}
 	return indexArr;
 }
-
-//void AWorldCreator::UpdateTextureRegion(FTexture2DRHIRef TextureRHI, int32 MipIndex, uint32 NumRegions, FUpdateTextureRegion2D Region, uint32 SrcPitch, uint32 SrcBpp, uint8* SrcData, TFunction<void(uint8* SrcData)> DataCleanupFunc)
-//{
-//	ENQUEUE_RENDER_COMMAND(UpdateTextureRegionsData)(
-//		[=](FRHICommandListImmediate& RHICmdList)
-//		{
-//			check(TextureRHI.IsValid());
-//			RHIUpdateTexture2D(
-//				TextureRHI,
-//				MipIndex,
-//				Region,
-//				SrcPitch,
-//				SrcData
-//				+ Region.SrcY * SrcPitch
-//				+ Region.SrcX * SrcBpp
-//			);
-//
-//			DataCleanupFunc(SrcData);
-//		});
-//}
 
 FVector2D FTextureTile::SetTileLength(FVector2D UnitSize, ETargetAxis TargetAxis)
 {
